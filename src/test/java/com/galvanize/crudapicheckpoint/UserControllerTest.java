@@ -10,8 +10,9 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import javax.transaction.Transactional;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -24,6 +25,7 @@ public class UserControllerTest {
     @Autowired
     UserRepository repository;
 
+    // Test saving individual user
     @Test
     @Transactional
     @Rollback
@@ -32,10 +34,75 @@ public class UserControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\": \"john@example.com\",\"password\": \"1234\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.email", is("john@example.com"))
-    );
+                .andExpect(jsonPath("$.id").isNumber())
+                .andExpect(jsonPath("$.email", is("john@example.com")))
+                .andExpect(jsonPath("$.password").doesNotExist());
+    }
 
+    // Test getting all users from db
 
+    @Test
+    @Transactional
+    @Rollback
+    public void getAllUsersTest() throws Exception {
+        User user = new User("john@example.com", "1234");
+        User user2 = new User("bob@example.com", "123");
+        User userAdded1 = repository.save(user);
+        User userAdded2 = repository.save(user2);
+
+        this.mvc.perform(get("/users"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id", is(userAdded1.getId().intValue())))
+                .andExpect(jsonPath("$[0].email", is("john@example.com")))
+                .andExpect(jsonPath("$[0].password").doesNotExist())
+                .andExpect(jsonPath("$[1].id", is( userAdded2.getId().intValue())));
+    }
+
+    // Test getting individual users from db
+
+    @Test
+    @Transactional
+    @Rollback
+    public void getOneUserTest() throws Exception {
+        User user = new User("john@example.com", "1234");
+        User user2 = new User("bob@example.com", "123");
+        User userAdded1 = repository.save(user);
+        User userAdded2 = repository.save(user2);
+
+        String path = String.format("/users/%d",userAdded1.getId().intValue());
+        this.mvc.perform(get(path))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", is(userAdded1.getId().intValue())))
+                .andExpect(jsonPath("$.email", is("john@example.com")))
+                .andExpect(jsonPath("$.password").doesNotExist());
+    }
+
+    // Test updating individual user
+    @Test
+    @Transactional
+    @Rollback
+    public void updateOneUserTest() throws Exception {
+        User user = new User("john@example.com", "1234");
+        User user2 = new User("bob@example.com", "123");
+        User userAdded1 = repository.save(user);
+        User userAdded2 = repository.save(user2);
+
+        String path1 = String.format("/users/%d",userAdded1.getId().intValue());
+        this.mvc.perform(patch(path1)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\": \"john2@example.com\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email", is("john2@example.com")))
+                .andExpect(jsonPath("$.password").doesNotExist());
+
+        String path2 = String.format("/users/%d",userAdded2.getId().intValue());
+        this.mvc.perform(patch(path2)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\": \"bob2@example.com\",\"password\": \"1234\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email", is("bob2@example.com")));
+
+                assertEquals("1234", userAdded2.getPassword());
     }
 
 }

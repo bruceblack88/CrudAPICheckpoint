@@ -1,13 +1,15 @@
 package com.galvanize.crudapicheckpoint;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Optional;
+
+import java.util.*;
 
 @RestController
 public class UserController {
@@ -52,21 +54,42 @@ public class UserController {
 
     //Endpoint 5
     @DeleteMapping("/users/{id}")
-    public Map<String, Integer> deleteUser (@PathVariable Long id){
-        Map<String, Integer> userMap = new HashMap<>();
-
-
-
-
-
+    public Map<String, Long> deleteUser (@PathVariable Long id){
+        Map<String, Long> userMap = new HashMap<>();
+        repository.deleteById(id);
+        long count = repository.count();
+        userMap.put("count", count);
         return userMap;
     }
 
+    //Endpoint 6
+    @PostMapping("/users/authenticate")
+    public AuthenticateUser authenticate(@RequestBody UserQuery userQuery){
+        AuthenticateUser authenticateUser = new AuthenticateUser();
+        authenticateUser = null;
+        ArrayList<User> userList = (ArrayList<User>) repository.findAll();
 
-    @ExceptionHandler(NoSuchElementException.class)
+        for (int i = 0; i < userList.size(); i++) {
+            if (userList.get(i).getEmail().equals(userQuery.getEmail())) {
+                if (userList.get(i).getPassword().equals(userQuery.getPassword())) {
+                    authenticateUser = new AuthenticateUser(true, userList.get(i));
+                }
+            }
+        }
+
+        if(authenticateUser == null) {
+            authenticateUser = new AuthenticateUser(false);
+        }
+
+        return authenticateUser;
+    }
+
+
+    @ExceptionHandler({NoSuchElementException.class, EmptyResultDataAccessException.class})
     public ResponseEntity<String> catchNoSuchElementException() {
         return new ResponseEntity<>("does not exist", HttpStatus.NOT_FOUND);
     }
+
 
 }
 
