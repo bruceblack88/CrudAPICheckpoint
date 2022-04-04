@@ -11,4 +11,12 @@ public class AuthenticateUserTest {
         AuthenticateUser authentication = new AuthenticateUser(false);
         assertEquals(false, authentication.isAuthenticated());
     }
+    @Test
+    void setAuthenticated(){
+        AuthenticateUser testUser = new AuthenticateUser();
+        testUser.setAuthenticated(false);
+        testUser.setUser(new User("john@email.com", "123"));
+        assertEquals(false, testUser.isAuthenticated());
+
+    }
 }
